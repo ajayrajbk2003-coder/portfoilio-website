@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VELOX – Build Your Bike</title>
+<meta name="description" content="Configure your perfect VELOX bike. Choose model, frame size, colour, groupset, and wheels. Add to cart and checkout with Shopify.">
+
+<!-- Schema.org AEO -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "VELOX Bike Configurator",
+  "description": "Build your custom VELOX performance bike",
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem","position":1,"name":"Home","item":"https://veloxbikes.com"},
+      {"@type": "ListItem","position":2,"name":"Configure","item":"https://veloxbikes.com/configurator"}
+    ]
+  }
+}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --ink:    #0A0A0B;
+  --ink2:   #141416;
+  --ink3:   #1E1E22;
+  --steel:  #2A2A32;
+  --chrome: #8B8B9A;
+  --ghost:  #C8C8D4;
+  --white:  #FFFFFF;
+  --volt:   #C8FF00;
+  --volt2:  #A0CC00;
+  --red:    #FF4444;
+  --blue:   #4488FF;
+  --orange: #FF6600;
+  --ease:   cubic-bezier(0.16,1,0.3,1);
+  --font-d: 'Bebas Neue', Impact, sans-serif;
+  --font-b: 'Inter', system-ui, sans-serif;
+  --font-m: 'JetBrains Mono', monospace;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--ghost);font-family:var(--font-b);overflow-x:hidden;line-height:1.6}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:var(--font-b)}
+
+/* ── CURSOR ── */
+.cur{position:fixed;z-index:9999;width:10px;height:10px;background:var(--volt);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);mix-blend-mode:difference;transition:transform .15s}
+.cur-r{position:fixed;z-index:9998;width:36px;height:36px;border:1px solid rgba(200,255,0,.4);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);transition:left .12s var(--ease),top .12s var(--ease)}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:500;padding:20px 48px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,11,.92);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.05)}
+.nav-logo{font-family:var(--font-d);font-size:26px;letter-spacing:.15em;color:var(--white)}
+.nav-logo span{color:var(--volt)}
+.nav-links{display:flex;gap:32px;list-style:none;font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase}
+.nav-links a{color:var(--chrome);transition:color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--volt)}
+.nav-back{background:none;border:1px solid rgba(255,255,255,.15);color:var(--ghost);padding:9px 20px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;transition:all .2s}
+.nav-back:hover{border-color:var(--volt);color:var(--volt)}
+
+/* ── PAGE TABS ── */
+.page-tabs{margin-top:80px;display:flex;border-bottom:1px solid rgba(255,255,255,.06);background:var(--ink2)}
+.page-tab{flex:1;padding:20px 32px;font-family:var(--font-d);font-size:18px;letter-spacing:.08em;color:var(--chrome);background:none;border:none;text-align:center;transition:all .3s;position:relative}
+.page-tab.active{color:var(--white)}
+.page-tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--volt)}
+.page-tab:hover:not(.active){color:var(--ghost)}
+
+/* ── PAGE PANELS ── */
+.panel{display:none;min-height:calc(100vh - 140px)}
+.panel.active{display:block}
+
+/* ══════════════════════════════════════
+   CONFIGURATOR
+══════════════════════════════════════ */
+.config-layout{display:grid;grid-template-columns:1fr 420px;min-height:calc(100vh - 140px)}
+
+/* 3D Preview */
+.config-preview{position:sticky;top:80px;height:calc(100vh - 80px);background:var(--ink2);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+#config-canvas{width:100%;height:60%;display:block}
+.preview-label{font-family:var(--font-d);font-size:56px;color:var(--white);letter-spacing:.1em;opacity:.06;position:absolute;bottom:80px;left:0;right:0;text-align:center;pointer-events:none}
+.preview-price-badge{position:absolute;top:24px;right:24px;background:var(--volt);color:var(--ink);padding:10px 20px}
+.preview-price-badge .price-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;opacity:.6}
+.preview-price-badge .price-val{font-family:var(--font-d);font-size:28px;letter-spacing:.05em}
+.preview-specs{position:absolute;bottom:24px;left:24px;right:24px;display:flex;gap:2px}
+.prev-spec{flex:1;background:rgba(255,255,255,.04);padding:12px;text-align:center}
+.prev-spec-label{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--chrome);font-family:var(--font-m);margin-bottom:3px}
+.prev-spec-val{font-family:var(--font-d);font-size:16px;color:var(--volt)}
+.color-swatch-preview{position:absolute;top:24px;left:24px;display:flex;gap:6px}
+.csw{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .2s,border-color .2s}
+.csw.active{border-color:var(--white);transform:scale(1.2)}
+
+/* Config Steps */
+.config-steps{background:var(--ink);overflow-y:auto;padding:40px 36px 100px}
+.step-section{margin-bottom:48px}
+.step-title{font-family:var(--font-d);font-size:22px;color:var(--white);letter-spacing:.08em;margin-bottom:4px}
+.step-sub{font-size:12px;color:var(--chrome);letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px;font-family:var(--font-m)}
+.step-divider{height:1px;background:rgba(255,255,255,.06);margin-bottom:48px}
+
+/* Model selector */
+.model-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.model-card{background:var(--ink2);padding:16px;cursor:pointer;border:2px solid transparent;transition:all .25s;position:relative;overflow:hidden}
+.model-card:hover{border-color:rgba(200,255,0,.3)}
+.model-card.selected{border-color:var(--volt)}
+.model-card.selected::before{content:'✓';position:absolute;top:8px;right:8px;background:var(--volt);color:var(--ink);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;line-height:18px;text-align:center}
+.model-card-name{font-family:var(--font-d);font-size:20px;color:var(--white);letter-spacing:.08em}
+.model-card-type{font-size:10px;color:var(--chrome);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;font-family:var(--font-m)}
+.model-card-price{font-family:var(--font-d);font-size:16px;color:var(--volt);margin-top:8px}
+
+/* Size selector */
+.size-grid{display:flex;gap:8px;flex-wrap:wrap}
+.size-btn{background:var(--ink2);border:2px solid transparent;color:var(--ghost);padding:12px 20px;font-size:13px;letter-spacing:.08em;transition:all .2s;min-width:64px;text-align:center}
+.size-btn:hover{border-color:rgba(200,255,0,.3);color:var(--white)}
+.size-btn.selected{border-color:var(--volt);color:var(--volt);background:rgba(200,255,0,.06)}
+.size-guide{font-size:11px;color:var(--chrome);text-decoration:underline;margin-top:10px;display:inline-block;cursor:pointer}
+
+/* Color selector */
+.color-options{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.color-opt{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--ink2);cursor:pointer;border:2px solid transparent;transition:all .2s}
+.color-opt:hover{border-color:rgba(255,255,255,.15)}
+.color-opt.selected{border-color:var(--volt)}
+.color-dot{width:24px;height:24px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.1)}
+.color-name{font-size:13px;color:var(--ghost)}
+.color-opt.selected .color-name{color:var(--white)}
+
+/* Groupset selector */
+.groupset-options{display:flex;flex-direction:column;gap:8px}
+.gs-opt{display:flex;align-items:center;gap:16px;padding:16px 18px;background:var(--ink2);cursor:pointer;border:2px solid transparent;transition:all .25s}
+.gs-opt:hover{border-color:rgba(200,255,0,.3)}
+.gs-opt.selected{border-color:var(--volt);background:rgba(200,255,0,.04)}
+.gs-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--steel);flex-shrink:0;position:relative;transition:border-color .2s}
+.gs-opt.selected .gs-radio{border-color:var(--volt)}
+.gs-opt.selected .gs-radio::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--volt)}
+.gs-info{flex:1}
+.gs-name{font-size:14px;font-weight:600;color:var(--white);margin-bottom:2px}
+.gs-desc{font-size:12px;color:var(--chrome)}
+.gs-price{font-family:var(--font-d);font-size:18px;color:var(--volt);white-space:nowrap}
+
+/* Wheels */
+.wheel-options{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.wheel-opt{padding:16px;background:var(--ink2);cursor:pointer;border:2px solid transparent;transition:all .25s}
+.wheel-opt:hover{border-color:rgba(200,255,0,.3)}
+.wheel-opt.selected{border-color:var(--volt)}
+.wheel-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px}
+.wheel-spec{font-size:11px;color:var(--chrome);font-family:var(--font-m)}
+.wheel-price{font-family:var(--font-d);font-size:16px;color:var(--volt);margin-top:8px}
+
+/* Accessories */
+.acc-options{display:flex;flex-direction:column;gap:6px}
+.acc-opt{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--ink2);cursor:pointer;border:2px solid transparent;transition:all .2s}
+.acc-opt:hover{border-color:rgba(255,255,255,.1)}
+.acc-opt.selected{border-color:rgba(200,255,0,.4);background:rgba(200,255,0,.03)}
+.acc-check{width:18px;height:18px;border:2px solid var(--steel);flex-shrink:0;position:relative;transition:all .2s}
+.acc-opt.selected .acc-check{border-color:var(--volt);background:var(--volt)}
+.acc-opt.selected .acc-check::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink);font-weight:700;line-height:14px;text-align:center}
+.acc-info{flex:1}
+.acc-name{font-size:13px;color:var(--ghost)}
+.acc-opt.selected .acc-name{color:var(--white)}
+.acc-price{font-size:13px;color:var(--chrome);font-family:var(--font-m)}
+
+/* Checkout bar */
+.checkout-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(10,10,11,.96);backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.08);padding:16px 48px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.checkout-summary{display:flex;gap:32px}
+.cs-item{display:flex;flex-direction:column}
+.cs-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--chrome);font-family:var(--font-m)}
+.cs-val{font-family:var(--font-d);font-size:20px;color:var(--white);letter-spacing:.05em}
+.cs-val.volt{color:var(--volt)}
+.checkout-actions{display:flex;gap:12px}
+.btn-save{background:none;border:1px solid rgba(255,255,255,.2);color:var(--ghost);padding:13px 24px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;transition:all .2s}
+.btn-save:hover{border-color:var(--ghost);color:var(--white)}
+.btn-buy{background:var(--volt);color:var(--ink);padding:14px 36px;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border:none;transition:all .25s;display:flex;align-items:center;gap:10px}
+.btn-buy:hover{background:var(--volt2);transform:translateY(-1px);box-shadow:0 8px 24px rgba(200,255,0,.25)}
+.btn-buy .shopify-icon{font-size:16px}
+
+/* ══════════════════════════════════════
+   SHOPIFY MODAL
+══════════════════════════════════════ */
+.modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--ink2);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;position:relative}
+.modal-header{padding:28px 32px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.modal-title{font-family:var(--font-d);font-size:32px;color:var(--white);letter-spacing:.05em}
+.modal-close{background:none;border:1px solid rgba(255,255,255,.15);color:var(--chrome);width:36px;height:36px;font-size:18px;transition:all .2s;flex-shrink:0}
+.modal-close:hover{border-color:var(--volt);color:var(--volt)}
+.modal-body{padding:24px 32px 32px}
+
+/* Order summary in modal */
+.order-summary{background:var(--ink3);padding:20px;margin-bottom:24px}
+.os-title{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--chrome);font-family:var(--font-m);margin-bottom:14px}
+.os-line{display:flex;justify-content:space-between;font-size:13px;color:var(--ghost);margin-bottom:8px}
+.os-line.total{border-top:1px solid rgba(255,255,255,.08);padding-top:12px;margin-top:12px;font-weight:700;color:var(--white)}
+.os-line.total .os-price{color:var(--volt);font-family:var(--font-d);font-size:20px}
+
+/* Shopify buy button area */
+.shopify-section{margin-bottom:24px}
+.shopify-section-label{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--chrome);font-family:var(--font-m);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.shopify-section-label::before{content:'';display:block;width:16px;height:1px;background:var(--chrome)}
+.shopify-note{font-size:12px;color:var(--chrome);line-height:1.6;padding:12px 16px;background:rgba(255,255,255,.03);border-left:2px solid var(--volt)}
+
+/* Fake Shopify pay buttons */
+.pay-methods{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.pay-btn{width:100%;padding:16px;border:none;font-size:14px;font-weight:600;letter-spacing:.05em;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .25s}
+.pay-shopify{background:#5C6BC0;color:#fff}
+.pay-shopify:hover{background:#4a58a8}
+.pay-gpay{background:#000;color:#fff;border:1px solid rgba(255,255,255,.2)}
+.pay-gpay:hover{background:#111}
+.pay-apple{background:#fff;color:#000}
+.pay-apple:hover{background:#eee}
+.pay-stripe{background:var(--volt);color:var(--ink)}
+.pay-stripe:hover{background:var(--volt2)}
+.pay-divider{text-align:center;font-size:11px;color:var(--chrome);letter-spacing:.15em;text-transform:uppercase;margin:4px 0}
+
+.trust-badges{display:flex;gap:16px;margin-top:16px;flex-wrap:wrap}
+.trust-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--chrome)}
+.trust-badge .icon{font-size:14px}
+
+/* ══════════════════════════════════════
+   CONTACT FORM
+══════════════════════════════════════ */
+#contact-panel{background:var(--ink)}
+.contact-layout{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 140px)}
+.contact-info{background:var(--ink2);padding:80px 64px;display:flex;flex-direction:column;justify-content:space-between}
+.contact-info-title{font-family:var(--font-d);font-size:clamp(48px,5vw,80px);color:var(--white);letter-spacing:.02em;line-height:.95;margin-bottom:24px}
+.contact-info-title span{color:var(--volt)}
+.contact-info-text{font-size:15px;color:var(--chrome);line-height:1.7;max-width:380px;margin-bottom:48px}
+.contact-details{display:flex;flex-direction:column;gap:24px}
+.cd-item{display:flex;gap:16px;align-items:flex-start}
+.cd-icon{width:40px;height:40px;background:rgba(200,255,0,.08);border:1px solid rgba(200,255,0,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.cd-label{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--chrome);font-family:var(--font-m);margin-bottom:4px}
+.cd-val{font-size:14px;color:var(--white)}
+.contact-social{display:flex;gap:12px;margin-top:48px}
+.social-btn{width:40px;height:40px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;text-decoration:none}
+.social-btn:hover{background:rgba(200,255,0,.1);border-color:var(--volt)}
+
+.contact-form-wrap{padding:80px 64px;overflow-y:auto}
+.form-title{font-family:var(--font-d);font-size:32px;color:var(--white);letter-spacing:.05em;margin-bottom:8px}
+.form-sub{font-size:13px;color:var(--chrome);margin-bottom:40px}
+
+/* Form fields */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-group{margin-bottom:16px;position:relative}
+.form-label{display:block;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--chrome);font-family:var(--font-m);margin-bottom:8px}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--ink2);border:1px solid rgba(255,255,255,.1);color:var(--white);padding:14px 16px;font-size:14px;font-family:var(--font-b);transition:border-color .2s,box-shadow .2s;outline:none;appearance:none;-webkit-appearance:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--volt);box-shadow:0 0 0 3px rgba(200,255,0,.08)}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--steel)}
+.form-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B8B9A' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;padding-right:40px;cursor:pointer}
+.form-select option{background:var(--ink2)}
+.form-textarea{resize:vertical;min-height:120px;line-height:1.6}
+.form-error{font-size:11px;color:var(--red);margin-top:5px;display:none;font-family:var(--font-m)}
+.form-group.has-error .form-input,
+.form-group.has-error .form-select,
+.form-group.has-error .form-textarea{border-color:var(--red)}
+.form-group.has-error .form-error{display:block}
+.form-group.valid .form-input,
+.form-group.valid .form-select,
+.form-group.valid .form-textarea{border-color:rgba(200,255,0,.4)}
+
+/* Checkbox */
+.checkbox-group{display:flex;align-items:flex-start;gap:12px;margin-bottom:28px}
+.checkbox-input{width:18px;height:18px;background:var(--ink2);border:2px solid var(--steel);appearance:none;-webkit-appearance:none;flex-shrink:0;margin-top:2px;cursor:pointer;position:relative;transition:all .2s}
+.checkbox-input:checked{background:var(--volt);border-color:var(--volt)}
+.checkbox-input:checked::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink);font-weight:700;line-height:14px;text-align:center}
+.checkbox-label{font-size:13px;color:var(--chrome);line-height:1.5;cursor:pointer}
+.checkbox-label a{color:var(--volt)}
+
+/* Submit */
+.btn-submit{width:100%;background:var(--volt);color:var(--ink);padding:18px;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:none;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-submit:hover:not(:disabled){background:var(--volt2);transform:translateY(-1px);box-shadow:0 8px 24px rgba(200,255,0,.2)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-submit .spinner{width:16px;height:16px;border:2px solid rgba(10,10,11,.3);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;display:none}
+.btn-submit.loading .btn-text{display:none}
+.btn-submit.loading .spinner{display:block}
+
+/* Success state */
+.form-success{display:none;text-align:center;padding:48px 32px}
+.form-success.show{display:block}
+.success-icon{font-size:56px;margin-bottom:16px}
+.success-title{font-family:var(--font-d);font-size:36px;color:var(--white);letter-spacing:.05em;margin-bottom:12px}
+.success-text{font-size:14px;color:var(--chrome);line-height:1.7}
+.success-ref{font-family:var(--font-m);font-size:12px;color:var(--volt);margin-top:16px;padding:10px 20px;background:rgba(200,255,0,.06);display:inline-block}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink3);border:1px solid rgba(200,255,0,.3);color:var(--white);padding:14px 24px;font-size:13px;z-index:2000;opacity:0;transition:all .3s var(--ease);pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.volt{border-color:var(--volt);background:rgba(200,255,0,.1);color:var(--volt)}
+.toast.error{border-color:var(--red);color:var(--red)}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  nav{padding:16px 20px}
+  .nav-links{display:none}
+  .config-layout{grid-template-columns:1fr}
+  .config-preview{position:relative;top:0;height:340px}
+  #config-canvas{height:100%}
+  .preview-specs{display:none}
+  .checkout-bar{padding:12px 20px}
+  .checkout-summary{gap:16px}
+  .contact-layout{grid-template-columns:1fr}
+  .contact-info{padding:48px 28px}
+  .contact-form-wrap{padding:48px 28px}
+  .form-row{grid-template-columns:1fr}
+  .page-tab{font-size:14px;padding:14px 16px}
+  .config-steps{padding:28px 20px 120px}
+}
+</style>
+</head>
+<body>
+
+<div class="cur" id="cur"></div>
+<div class="cur-r" id="curR"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">VEL<span>O</span>X</div>
+  <ul class="nav-links">
+    <li><a href="#" onclick="switchTab('config');return false" class="active" id="nl-config">Configurator</a></li>
+    <li><a href="#" onclick="switchTab('contact');return false" id="nl-contact">Contact</a></li>
+    <li><a href="index.html">← Back to Site</a></li>
+  </ul>
+  <button class="nav-back" onclick="window.location='index.html'">← Back to Site</button>
+</nav>
+
+<!-- PAGE TABS -->
+<div class="page-tabs">
+  <button class="page-tab active" id="tab-config" onclick="switchTab('config')">🚴 Bike Configurator</button>
+  <button class="page-tab" id="tab-contact" onclick="switchTab('contact')">✉️ Contact & Support</button>
+</div>
+
+<!-- ══════════════════════════════════════
+     CONFIGURATOR PANEL
+══════════════════════════════════════ -->
+<div class="panel active" id="config-panel">
+  <div class="config-layout">
+
+    <!-- 3D Preview -->
+    <div class="config-preview">
+      <canvas id="config-canvas"></canvas>
+      <div class="preview-label" id="preview-label">APEX</div>
+      <div class="preview-price-badge">
+        <div class="price-label">Total</div>
+        <div class="price-val" id="preview-price">$5,299</div>
+      </div>
+      <div class="color-swatch-preview" id="color-swatches"></div>
+      <div class="preview-specs">
+        <div class="prev-spec"><div class="prev-spec-label">Model</div><div class="prev-spec-val" id="ps-model">APEX</div></div>
+        <div class="prev-spec"><div class="prev-spec-label">Size</div><div class="prev-spec-val" id="ps-size">M</div></div>
+        <div class="prev-spec"><div class="prev-spec-label">Groupset</div><div class="prev-spec-val" id="ps-group">Ultegra</div></div>
+        <div class="prev-spec"><div class="prev-spec-label">Weight</div><div class="prev-spec-val" id="ps-weight">7.1kg</div></div>
+      </div>
+    </div>
+
+    <!-- Config Steps -->
+    <div class="config-steps">
+
+      <!-- Step 1: Model -->
+      <div class="step-section">
+        <div class="step-title">Choose Your Model</div>
+        <div class="step-sub">Step 1 of 5</div>
+        <div class="model-cards">
+          <div class="model-card selected" onclick="selectModel(this,'APEX','Road Racing',5299,'7.1kg')" data-model="APEX">
+            <div class="model-card-type">Road Racing</div>
+            <div class="model-card-name">APEX</div>
+            <div class="model-card-price">from $5,299</div>
+          </div>
+          <div class="model-card" onclick="selectModel(this,'CREST','Trail / MTB',4799,'10.2kg')" data-model="CREST">
+            <div class="model-card-type">Trail / MTB</div>
+            <div class="model-card-name">CREST</div>
+            <div class="model-card-price">from $4,799</div>
+          </div>
+          <div class="model-card" onclick="selectModel(this,'TEMPO','Gravel',3899,'8.8kg')" data-model="TEMPO">
+            <div class="model-card-type">Gravel</div>
+            <div class="model-card-name">TEMPO</div>
+            <div class="model-card-price">from $3,899</div>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- Step 2: Size -->
+      <div class="step-section">
+        <div class="step-title">Frame Size</div>
+        <div class="step-sub">Step 2 of 5</div>
+        <div class="size-grid">
+          <button class="size-btn" onclick="selectSize(this,'XS')">XS</button>
+          <button class="size-btn selected" onclick="selectSize(this,'S')">S</button>
+          <button class="size-btn" onclick="selectSize(this,'M')">M</button>
+          <button class="size-btn" onclick="selectSize(this,'L')">L</button>
+          <button class="size-btn" onclick="selectSize(this,'XL')">XL</button>
+          <button class="size-btn" onclick="selectSize(this,'XXL')">XXL</button>
+        </div>
+        <span class="size-guide" onclick="showToast('Size guide: XS=155-165cm  S=165-172cm  M=172-179cm  L=179-186cm  XL=186-193cm')">View sizing chart →</span>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- Step 3: Colour -->
+      <div class="step-section">
+        <div class="step-title">Frame Colour</div>
+        <div class="step-sub">Step 3 of 5</div>
+        <div class="color-options">
+          <div class="color-opt selected" onclick="selectColor(this,'Stealth Black','#0a0a0b',0x111118)">
+            <div class="color-dot" style="background:#1a1a22;border-color:#333"></div>
+            <span class="color-name">Stealth Black</span>
+          </div>
+          <div class="color-opt" onclick="selectColor(this,'Volt Green','#c8ff00',0x8aad00)">
+            <div class="color-dot" style="background:#c8ff00"></div>
+            <span class="color-name">Volt Green</span>
+          </div>
+          <div class="color-opt" onclick="selectColor(this,'Arctic White','#f5f5f7',0xd0d0d8)">
+            <div class="color-dot" style="background:#f5f5f7;border-color:#444"></div>
+            <span class="color-name">Arctic White</span>
+          </div>
+          <div class="color-opt" onclick="selectColor(this,'Inferno Red','#cc2200',0xcc2200)">
+            <div class="color-dot" style="background:#cc2200"></div>
+            <span class="color-name">Inferno Red</span>
+          </div>
+          <div class="color-opt" onclick="selectColor(this,'Deep Ocean','#0044aa',0x0044aa)">
+            <div class="color-dot" style="background:#0044aa"></div>
+            <span class="color-name">Deep Ocean</span>
+          </div>
+          <div class="color-opt" onclick="selectColor(this,'Titanium','#8a8a9a',0x8a8a9a)">
+            <div class="color-dot" style="background:#8a8a9a"></div>
+            <span class="color-name">Titanium</span>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- Step 4: Groupset -->
+      <div class="step-section">
+        <div class="step-title">Groupset</div>
+        <div class="step-sub">Step 4 of 5</div>
+        <div class="groupset-options">
+          <div class="gs-opt selected" onclick="selectGroupset(this,'105 Di2',0,'8.4kg','Shimano 105 Di2 — electronic shifting entry')">
+            <div class="gs-radio"></div>
+            <div class="gs-info">
+              <div class="gs-name">Shimano 105 Di2</div>
+              <div class="gs-desc">12-speed electronic shifting · Included</div>
+            </div>
+            <div class="gs-price">+$0</div>
+          </div>
+          <div class="gs-opt" onclick="selectGroupset(this,'Ultegra Di2',600,'7.8kg','Shimano Ultegra Di2 — race-proven electronic shifting')">
+            <div class="gs-radio"></div>
+            <div class="gs-info">
+              <div class="gs-name">Shimano Ultegra Di2</div>
+              <div class="gs-desc">12-speed electronic · Faster shift response</div>
+            </div>
+            <div class="gs-price">+$600</div>
+          </div>
+          <div class="gs-opt" onclick="selectGroupset(this,'Dura-Ace Di2',1800,'6.9kg','Shimano Dura-Ace Di2 — pro peloton spec')">
+            <div class="gs-radio"></div>
+            <div class="gs-info">
+              <div class="gs-name">Shimano Dura-Ace Di2</div>
+              <div class="gs-desc">12-speed · Pro peloton spec · Lightest</div>
+            </div>
+            <div class="gs-price">+$1,800</div>
+          </div>
+          <div class="gs-opt" onclick="selectGroupset(this,'SRAM Red AXS',2200,'6.7kg','SRAM Red AXS — wireless 1× or 2× electronic')">
+            <div class="gs-radio"></div>
+            <div class="gs-info">
+              <div class="gs-name">SRAM Red AXS</div>
+              <div class="gs-desc">Wireless 12-speed · 1× or 2× compatible</div>
+            </div>
+            <div class="gs-price">+$2,200</div>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- Step 5: Wheels -->
+      <div class="step-section">
+        <div class="step-title">Wheels</div>
+        <div class="step-sub">Step 5 of 5</div>
+        <div class="wheel-options">
+          <div class="wheel-opt selected" onclick="selectWheel(this,'Stock Alloy',0)">
+            <div class="wheel-name">Stock Alloy</div>
+            <div class="wheel-spec">Shimano RS171 · 30mm depth</div>
+            <div class="wheel-price">+$0</div>
+          </div>
+          <div class="wheel-opt" onclick="selectWheel(this,'Carbon 35mm',799)">
+            <div class="wheel-name">Carbon 35mm</div>
+            <div class="wheel-spec">VELOX CX35 · Full carbon · 1,380g</div>
+            <div class="wheel-price">+$799</div>
+          </div>
+          <div class="wheel-opt" onclick="selectWheel(this,'Carbon 50mm',1299)">
+            <div class="wheel-name">Carbon 50mm Aero</div>
+            <div class="wheel-spec">VELOX AX50 · Aero profile · 1,490g</div>
+            <div class="wheel-price">+$1,299</div>
+          </div>
+          <div class="wheel-opt" onclick="selectWheel(this,'Carbon 65mm',1699)">
+            <div class="wheel-name">Carbon 65mm TT</div>
+            <div class="wheel-spec">VELOX TT65 · Time-trial · 1,580g</div>
+            <div class="wheel-price">+$1,699</div>
+          </div>
+        </div>
+      </div>
+      <div class="step-divider"></div>
+
+      <!-- Extras -->
+      <div class="step-section">
+        <div class="step-title">Add-ons</div>
+        <div class="step-sub">Optional</div>
+        <div class="acc-options">
+          <div class="acc-opt" onclick="toggleAcc(this,199)">
+            <div class="acc-check"></div>
+            <div class="acc-info"><div class="acc-name">Power Meter (Shimano 4iiii)</div></div>
+            <div class="acc-price">+$199</div>
+          </div>
+          <div class="acc-opt" onclick="toggleAcc(this,89)">
+            <div class="acc-check"></div>
+            <div class="acc-info"><div class="acc-name">VELOX Saddle Bag Kit</div></div>
+            <div class="acc-price">+$89</div>
+          </div>
+          <div class="acc-opt" onclick="toggleAcc(this,149)">
+            <div class="acc-check"></div>
+            <div class="acc-info"><div class="acc-name">Garmin Mount + Computer Bundle</div></div>
+            <div class="acc-price">+$149</div>
+          </div>
+          <div class="acc-opt" onclick="toggleAcc(this,299)">
+            <div class="acc-check"></div>
+            <div class="acc-info"><div class="acc-name">Professional Bike Fitting Session</div></div>
+            <div class="acc-price">+$299</div>
+          </div>
+          <div class="acc-opt" onclick="toggleAcc(this,0)">
+            <div class="acc-check"></div>
+            <div class="acc-info"><div class="acc-name">Lifetime Frame Warranty Upgrade</div></div>
+            <div class="acc-price">FREE</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Checkout Bar -->
+  <div class="checkout-bar">
+    <div class="checkout-summary">
+      <div class="cs-item"><div class="cs-label">Model</div><div class="cs-val" id="cb-model">APEX</div></div>
+      <div class="cs-item"><div class="cs-label">Size</div><div class="cs-val" id="cb-size">S</div></div>
+      <div class="cs-item"><div class="cs-label">Colour</div><div class="cs-val" id="cb-color">Stealth Black</div></div>
+      <div class="cs-item"><div class="cs-label">Total</div><div class="cs-val volt" id="cb-total">$5,299</div></div>
+    </div>
+    <div class="checkout-actions">
+      <button class="btn-save" onclick="saveConfig()">💾 Save Config</button>
+      <button class="btn-buy" onclick="openCheckout()">
+        <span class="shopify-icon">🛍</span>
+        Buy Now — Shopify
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CONTACT PANEL
+══════════════════════════════════════ -->
+<div class="panel" id="contact-panel">
+  <div class="contact-layout">
+
+    <!-- Left info -->
+    <div class="contact-info">
+      <div>
+        <div class="contact-info-title">LET'S<br>TALK<br><span>BIKES.</span></div>
+        <div class="contact-info-text">Whether you need help choosing a model, want to talk to a fit specialist, or are a dealer looking to stock VELOX — we're here.</div>
+        <div class="contact-details">
+          <div class="cd-item">
+            <div class="cd-icon">📍</div>
+            <div><div class="cd-label">Headquarters</div><div class="cd-val">VELOX HQ, 12 Carbon Way<br>Portland, OR 97201, USA</div></div>
+          </div>
+          <div class="cd-item">
+            <div class="cd-icon">📞</div>
+            <div><div class="cd-label">Phone</div><div class="cd-val">+1 800 835 699</div></div>
+          </div>
+          <div class="cd-item">
+            <div class="cd-icon">✉️</div>
+            <div><div class="cd-label">Email</div><div class="cd-val">hello@veloxbikes.com</div></div>
+          </div>
+          <div class="cd-item">
+            <div class="cd-icon">🕐</div>
+            <div><div class="cd-label">Hours</div><div class="cd-val">Mon–Fri 8am–6pm PST<br>Sat 9am–3pm PST</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="contact-social">
+        <a class="social-btn" href="#" title="Instagram">📸</a>
+        <a class="social-btn" href="#" title="YouTube">▶️</a>
+        <a class="social-btn" href="#" title="Strava">🚴</a>
+        <a class="social-btn" href="#" title="Twitter/X">✖</a>
+      </div>
+    </div>
+
+    <!-- Right form -->
+    <div class="contact-form-wrap">
+      <div id="contact-form-area">
+        <div class="form-title">Send a Message</div>
+        <div class="form-sub">We reply within 1 business day. For urgent orders, call us directly.</div>
+
+        <div class="form-row">
+          <div class="form-group" id="fg-firstname">
+            <label class="form-label" for="firstname">First Name *</label>
+            <input class="form-input" id="firstname" type="text" placeholder="Alex" autocomplete="given-name">
+            <div class="form-error">First name is required.</div>
+          </div>
+          <div class="form-group" id="fg-lastname">
+            <label class="form-label" for="lastname">Last Name *</label>
+            <input class="form-input" id="lastname" type="text" placeholder="Rivera" autocomplete="family-name">
+            <div class="form-error">Last name is required.</div>
+          </div>
+        </div>
+
+        <div class="form-group" id="fg-email">
+          <label class="form-label" for="email">Email Address *</label>
+          <input class="form-input" id="email" type="email" placeholder="alex@example.com" autocomplete="email">
+          <div class="form-error">Please enter a valid email address.</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" id="fg-phone">
+            <label class="form-label" for="phone">Phone (optional)</label>
+            <input class="form-input" id="phone" type="tel" placeholder="+1 555 000 0000" autocomplete="tel">
+            <div class="form-error">Invalid phone number.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="country">Country</label>
+            <select class="form-select" id="country">
+              <option value="">Select country…</option>
+              <option>United States</option>
+              <option>United Kingdom</option>
+              <option>Canada</option>
+              <option>Australia</option>
+              <option>Germany</option>
+              <option>France</option>
+              <option>Italy</option>
+              <option>India</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" id="fg-subject">
+          <label class="form-label" for="subject">Subject *</label>
+          <select class="form-select" id="subject">
+            <option value="">What can we help with?</option>
+            <option>Pre-sale bike question</option>
+            <option>Order status / tracking</option>
+            <option>Warranty claim</option>
+            <option>Dealer / wholesale enquiry</option>
+            <option>Professional team sponsorship</option>
+            <option>Bike fitting appointment</option>
+            <option>Press / media</option>
+            <option>Other</option>
+          </select>
+          <div class="form-error">Please choose a subject.</div>
+        </div>
+
+        <div class="form-group" id="fg-bike">
+          <label class="form-label" for="bike-interest">Bike of Interest</label>
+          <select class="form-select" id="bike-interest">
+            <option value="">No specific bike</option>
+            <option>VELOX APEX – Road</option>
+            <option>VELOX CREST – MTB</option>
+            <option>VELOX TEMPO – Gravel</option>
+            <option>Not sure — need advice</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="fg-message">
+          <label class="form-label" for="message">Message *</label>
+          <textarea class="form-textarea" id="message" placeholder="Tell us what you're looking for…"></textarea>
+          <div class="form-error">Please write a message (min 10 characters).</div>
+        </div>
+
+        <div class="checkbox-group">
+          <input class="checkbox-input" type="checkbox" id="consent" checked>
+          <label class="checkbox-label" for="consent">
+            I agree to VELOX's <a href="#">Privacy Policy</a> and consent to being contacted about my enquiry. You can unsubscribe at any time.
+          </label>
+        </div>
+
+        <button class="btn-submit" id="submit-btn" onclick="submitForm()">
+          <span class="btn-text">Send Message →</span>
+          <div class="spinner"></div>
+        </button>
+
+        <div class="trust-badges" style="margin-top:20px">
+          <div class="trust-badge"><span class="icon">🔒</span>SSL Encrypted</div>
+          <div class="trust-badge"><span class="icon">🛡</span>GDPR Compliant</div>
+          <div class="trust-badge"><span class="icon">⚡</span>Reply in 24h</div>
+        </div>
+      </div>
+
+      <!-- Success -->
+      <div class="form-success" id="form-success">
+        <div class="success-icon">✅</div>
+        <div class="success-title">MESSAGE SENT!</div>
+        <div class="success-text">Thanks for reaching out. Our team will get back to you within 1 business day. Check your inbox for a confirmation email.</div>
+        <div class="success-ref" id="success-ref">REF: VLX-000000</div>
+        <br><br>
+        <button class="btn-submit" style="max-width:260px;margin:0 auto" onclick="resetForm()"><span class="btn-text">Send Another →</span></button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SHOPIFY / CHECKOUT MODAL
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="checkout-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">CHECKOUT</div>
+      <button class="modal-close" onclick="closeCheckout()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Order Summary -->
+      <div class="order-summary">
+        <div class="os-title">Order Summary</div>
+        <div class="os-line"><span id="os-model">VELOX APEX – Stealth Black, S</span><span class="os-price" id="os-base">$5,299</span></div>
+        <div class="os-line" id="os-group-line"><span id="os-group">Shimano 105 Di2</span><span id="os-group-p" class="os-price">Incl.</span></div>
+        <div class="os-line" id="os-wheel-line"><span id="os-wheels">Stock Alloy Wheels</span><span id="os-wheel-p" class="os-price">Incl.</span></div>
+        <div class="os-line"><span>Assembly & delivery</span><span class="os-price">FREE</span></div>
+        <div class="os-line total"><span>Total (USD)</span><span class="os-price" id="os-total">$5,299</span></div>
+      </div>
+
+      <!-- Payment Methods -->
+      <div class="shopify-section">
+        <div class="shopify-section-label">Pay with</div>
+        <div class="pay-methods">
+          <button class="pay-btn pay-shopify" onclick="handlePay('Shopify Pay')">🛍 Shopify Pay — Fastest Checkout</button>
+          <button class="pay-btn pay-apple" onclick="handlePay('Apple Pay')">🍎 Apple Pay</button>
+          <button class="pay-btn pay-gpay" onclick="handlePay('Google Pay')">🔵 Google Pay</button>
+          <div class="pay-divider">— or pay by card —</div>
+          <button class="pay-btn pay-stripe" onclick="handlePay('Stripe')">💳 Pay with Card (Stripe)</button>
+        </div>
+        <div class="shopify-note">
+          <strong>🔗 Shopify Integration Note:</strong> To activate payments, add your Shopify Storefront API key and product variant IDs in the JS config below. This demo shows the full checkout UI — wire up <code>createCheckout()</code> via <code>@shopify/buy-sdk</code> to go live.
+        </div>
+      </div>
+
+      <div class="trust-badges">
+        <div class="trust-badge"><span class="icon">🔒</span>256-bit SSL</div>
+        <div class="trust-badge"><span class="icon">🔄</span>30-day returns</div>
+        <div class="trust-badge"><span class="icon">🚚</span>Free shipping</div>
+        <div class="trust-badge"><span class="icon">🛡</span>12yr warranty</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   CURSOR
+═══════════════════════════════════════ */
+const cur = document.getElementById('cur'), curR = document.getElementById('curR');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+(function loop(){cur.style.left=mx+'px';cur.style.top=my+'px';rx+=(mx-rx)*.12;ry+=(my-ry)*.12;curR.style.left=rx+'px';curR.style.top=ry+'px';requestAnimationFrame(loop);})();
+
+/* ═══════════════════════════════════════
+   TABS
+═══════════════════════════════════════ */
+function switchTab(tab) {
+  ['config','contact'].forEach(t=>{
+    document.getElementById(t+'-panel').classList.toggle('active',t===tab);
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+    const nl=document.getElementById('nl-'+t);
+    if(nl) nl.classList.toggle('active',t===tab);
+  });
+}
+
+/* ═══════════════════════════════════════
+   CONFIGURATOR STATE
+═══════════════════════════════════════ */
+const state = {
+  model:'APEX', modelBase:5299, size:'S',
+  color:'Stealth Black', colorHex:0x111118,
+  groupset:'105 Di2', groupExtra:0,
+  wheel:'Stock Alloy', wheelExtra:0,
+  accExtras:0, weight:'7.1kg', groupName:'105'
+};
+
+function updatePrice(){
+  const total = state.modelBase + state.groupExtra + state.wheelExtra + state.accExtras;
+  const fmt = '$'+total.toLocaleString();
+  document.getElementById('preview-price').textContent = fmt;
+  document.getElementById('cb-total').textContent = fmt;
+  document.getElementById('ps-weight').textContent = state.weight;
+  document.getElementById('os-total').textContent = fmt;
+  document.getElementById('os-base').textContent = '$'+state.modelBase.toLocaleString();
+}
+
+function selectModel(el,name,type,price,wt){
+  document.querySelectorAll('.model-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.model=name; state.modelBase=price; state.weight=wt;
+  document.getElementById('preview-label').textContent=name;
+  document.getElementById('ps-model').textContent=name;
+  document.getElementById('cb-model').textContent=name;
+  updateBikeColor(state.colorHex,name);
+  updatePrice();
+  showToast('Model: VELOX '+name+' selected','volt');
+}
+
+function selectSize(el,size){
+  document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  state.size=size;
+  document.getElementById('ps-size').textContent=size;
+  document.getElementById('cb-size').textContent=size;
+}
+
+function selectColor(el,name,hex,threeHex){
+  document.querySelectorAll('.color-opt').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.color=name; state.colorHex=threeHex;
+  document.getElementById('cb-color').textContent=name;
+  updateBikeColor(threeHex,state.model);
+  showToast('Colour changed to '+name);
+}
+
+function selectGroupset(el,name,extra,wt,desc){
+  document.querySelectorAll('.gs-opt').forEach(g=>g.classList.remove('selected'));
+  el.classList.add('selected');
+  state.groupset=name; state.groupExtra=extra; state.weight=wt;
+  document.getElementById('ps-group').textContent=name.split(' ')[1]||name;
+  document.getElementById('os-group').textContent=name;
+  document.getElementById('os-group-p').textContent=extra?'+$'+extra.toLocaleString():'Incl.';
+  updatePrice();
+  showToast(name+' selected');
+}
+
+function selectWheel(el,name,extra){
+  document.querySelectorAll('.wheel-opt').forEach(w=>w.classList.remove('selected'));
+  el.classList.add('selected');
+  state.wheel=name; state.wheelExtra=extra;
+  document.getElementById('os-wheels').textContent=name+' Wheels';
+  document.getElementById('os-wheel-p').textContent=extra?'+$'+extra.toLocaleString():'Incl.';
+  updatePrice();
+}
+
+function toggleAcc(el,price){
+  const was=el.classList.contains('selected');
+  el.classList.toggle('selected');
+  state.accExtras+=was?-price:price;
+  updatePrice();
+}
+
+function saveConfig(){
+  const cfg={...state,saved:new Date().toISOString()};
+  try{ localStorage.setItem('velox_config',JSON.stringify(cfg)); }catch(e){}
+  showToast('Configuration saved! 💾','volt');
+}
+
+/* ═══════════════════════════════════════
+   CHECKOUT MODAL
+═══════════════════════════════════════ */
+function openCheckout(){
+  document.getElementById('os-model').textContent=`VELOX ${state.model} – ${state.color}, ${state.size}`;
+  document.getElementById('checkout-modal').classList.add('open');
+}
+function closeCheckout(){ document.getElementById('checkout-modal').classList.remove('open'); }
+document.getElementById('checkout-modal').addEventListener('click',e=>{ if(e.target.id==='checkout-modal') closeCheckout(); });
+
+function handlePay(method){
+  closeCheckout();
+  showToast(`Redirecting to ${method} checkout…`,'volt');
+  /* 
+   ══ SHOPIFY INTEGRATION ══
+   Replace this block with real Shopify Buy SDK:
+
+   import Client from 'shopify-buy';
+   const client = Client.buildClient({
+     domain: 'your-store.myshopify.com',
+     storefrontAccessToken: 'YOUR_TOKEN'
+   });
+   const checkout = await client.checkout.create();
+   await client.checkout.addLineItems(checkout.id, [{
+     variantId: 'YOUR_VARIANT_ID',
+     quantity: 1,
+     customAttributes: [
+       { key: 'Color', value: state.color },
+       { key: 'Size', value: state.size },
+       { key: 'Groupset', value: state.groupset }
+     ]
+   }]);
+   window.location.href = checkout.webUrl;
+  */
+  setTimeout(()=>showToast('In production this would open '+method+' ✓'),1200);
+}
+
+/* ═══════════════════════════════════════
+   CONTACT FORM
+═══════════════════════════════════════ */
+function validate(){
+  let ok=true;
+  const checks=[
+    ['fg-firstname','firstname',v=>v.trim().length>0],
+    ['fg-lastname','lastname',v=>v.trim().length>0],
+    ['fg-email','email',v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)],
+    ['fg-subject','subject',v=>v!==''],
+    ['fg-message','message',v=>v.trim().length>=10],
+  ];
+  checks.forEach(([groupId,fieldId,fn])=>{
+    const fg=document.getElementById(groupId);
+    const val=document.getElementById(fieldId).value;
+    const valid=fn(val);
+    fg.classList.toggle('has-error',!valid);
+    fg.classList.toggle('valid',valid);
+    if(!valid) ok=false;
+  });
+  return ok;
+}
+
+['firstname','lastname','email','subject','message'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('input',()=>{
+    const fg=document.getElementById('fg-'+id);
+    if(!fg) return;
+    fg.classList.remove('has-error');
+  });
+});
+
+async function submitForm(){
+  if(!validate()) return;
+  const btn=document.getElementById('submit-btn');
+  btn.classList.add('loading'); btn.disabled=true;
+
+  /*
+   ══ BACKEND INTEGRATION ══
+   Uncomment + configure one of these:
+
+   // Option A: Supabase
+   const { error } = await supabase.from('contacts').insert([{ name, email, message }]);
+
+   // Option B: Formspree
+   await fetch('https://formspree.io/f/YOUR_ID',{method:'POST',body:new FormData(form)});
+
+   // Option C: EmailJS
+   await emailjs.send('service_id','template_id',{name,email,message},'public_key');
+
+   // Option D: Your own API
+   await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},
+     body: JSON.stringify({name,email,message})});
+  */
+
+  // Simulate API call
+  await new Promise(r=>setTimeout(r,1800));
+
+  btn.classList.remove('loading'); btn.disabled=false;
+  document.getElementById('contact-form-area').style.display='none';
+  const success=document.getElementById('form-success');
+  success.classList.add('show');
+  const ref='VLX-'+Math.random().toString(36).substr(2,6).toUpperCase();
+  document.getElementById('success-ref').textContent='REF: '+ref;
+}
+
+function resetForm(){
+  document.getElementById('contact-form-area').style.display='block';
+  document.getElementById('form-success').classList.remove('show');
+  ['firstname','lastname','email','phone','message'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  ['subject','country','bike-interest'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.selectedIndex=0;
+  });
+  document.querySelectorAll('.form-group').forEach(g=>g.classList.remove('has-error','valid'));
+}
+
+/* ═══════════════════════════════════════
+   TOAST
+═══════════════════════════════════════ */
+let toastTimer;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(type?' '+type:'');
+  void t.offsetWidth;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+/* ═══════════════════════════════════════
+   3D BIKE CONFIGURATOR CANVAS
+═══════════════════════════════════════ */
+let bikeScene,bikeRenderer,bikeCamera,bikeGroup,bikeFrameMeshes=[];
+let bikeWheels=[], bikeAnimId;
+
+function initBikeViewer(){
+  const canvas=document.getElementById('config-canvas');
+  bikeScene=new THREE.Scene();
+  bikeCamera=new THREE.PerspectiveCamera(55,canvas.clientWidth/canvas.clientHeight||16/9,0.1,100);
+  bikeRenderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  bikeRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  bikeRenderer.setSize(canvas.clientWidth,canvas.clientHeight);
+  bikeCamera.position.set(0,0.5,7);
+
+  const amb=new THREE.AmbientLight(0xffffff,0.4); bikeScene.add(amb);
+  const key=new THREE.DirectionalLight(0xffffff,1.4); key.position.set(5,8,6); bikeScene.add(key);
+  const fill=new THREE.DirectionalLight(0x8888ff,0.4); fill.position.set(-4,0,4); bikeScene.add(fill);
+  const accent=new THREE.PointLight(0xC8FF00,1.5,14); accent.position.set(0,3,-2); bikeScene.add(accent);
+
+  bikeGroup=new THREE.Group();
+  buildBike(0x111118);
+  bikeScene.add(bikeGroup);
+
+  // Ground reflection line
+  const gLine=new THREE.Mesh(
+    new THREE.PlaneGeometry(8,0.5),
+    new THREE.MeshBasicMaterial({color:0xC8FF00,transparent:true,opacity:0.04})
+  );
+  gLine.rotation.x=-Math.PI/2; gLine.position.y=-1.2;
+  bikeScene.add(gLine);
+
+  let t=0,rotY=0,targetRotY=0.4;
+  let mouseX=0;
+  canvas.parentElement.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect();
+    mouseX=(e.clientX-r.left)/r.width*2-1;
+    targetRotY=mouseX*0.8;
+  });
+  canvas.parentElement.addEventListener('mouseleave',()=>{ targetRotY=0.4; });
+
+  function loop(){
+    bikeAnimId=requestAnimationFrame(loop);
+    t+=0.012;
+    rotY+=(targetRotY-rotY)*0.04;
+    bikeGroup.rotation.y=rotY;
+    bikeGroup.position.y=Math.sin(t*0.8)*0.06;
+    bikeWheels.forEach(w=>{ w.rotation.z-=0.06; });
+    bikeRenderer.render(bikeScene,bikeCamera);
+  }
+  loop();
+
+  window.addEventListener('resize',()=>{
+    const w=canvas.clientWidth,h=canvas.clientHeight;
+    bikeCamera.aspect=w/h; bikeCamera.updateProjectionMatrix();
+    bikeRenderer.setSize(w,h);
+  });
+}
+
+function buildBike(frameColor){
+  // Clear old
+  while(bikeGroup.children.length) bikeGroup.remove(bikeGroup.children[0]);
+  bikeWheels=[];
+
+  const fMat=()=>new THREE.MeshStandardMaterial({color:frameColor,metalness:0.7,roughness:0.25});
+  const cMat=()=>new THREE.MeshStandardMaterial({color:0xC8FF00,metalness:0.6,roughness:0.3,emissive:0x223300,emissiveIntensity:0.15});
+  const silvMat=new THREE.MeshStandardMaterial({color:0x999999,metalness:0.9,roughness:0.2});
+  const darkMat=new THREE.MeshStandardMaterial({color:0x1a1a22,metalness:0.5,roughness:0.5});
+
+  function tube(from,to,r,mat){
+    const dir=new THREE.Vector3().subVectors(to,from);
+    const len=dir.length();
+    const mid=new THREE.Vector3().addVectors(from,to).multiplyScalar(0.5);
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,12),mat);
+    m.position.copy(mid);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
+    return m;
+  }
+
+  // Frame
+  const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+  const BB=V(0,-1,0), ST=V(-0.1,0.9,0), HT_TOP=V(1.3,0.7,0), HT_BOT=V(1.45,-0.25,0), RD=V(-1.6,-1,0);
+
+  bikeGroup.add(tube(ST,BB,0.06,fMat()));          // seat tube
+  bikeGroup.add(tube(ST,HT_TOP,0.05,fMat()));      // top tube
+  bikeGroup.add(tube(BB,HT_BOT,0.07,cMat()));      // down tube (accent)
+  bikeGroup.add(tube(HT_TOP,HT_BOT,0.07,fMat())); // head tube
+  bikeGroup.add(tube(BB,RD,0.04,fMat()));           // chain stay
+  bikeGroup.add(tube(ST,RD,0.03,fMat()));           // seat stay
+  // Fork
+  bikeGroup.add(tube(HT_BOT,V(1.6,-1,0),0.04,fMat()));
+
+  // Wheels
+  function makeWheel(cx){
+    const wg=new THREE.Group();
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(1,0.055,18,72),silvMat.clone());
+    wg.add(rim);
+    const tire=new THREE.Mesh(new THREE.TorusGeometry(1,0.095,10,72),darkMat.clone());
+    wg.add(tire);
+    for(let i=0;i<16;i++){
+      const a=(i/16)*Math.PI*2;
+      const sg=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,1,4),silvMat.clone());
+      sg.rotation.z=a; sg.position.set(Math.sin(a)*0.5,Math.cos(a)*0.5,0);
+      wg.add(sg);
+    }
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.18,16),cMat());
+    hub.rotation.x=Math.PI/2; wg.add(hub);
+    wg.position.set(cx,-1,0);
+    wg.rotation.y=Math.PI/2;
+    bikeWheels.push(wg);
+    return wg;
+  }
+  bikeGroup.add(makeWheel(-1.6));
+  bikeGroup.add(makeWheel(1.6));
+
+  // Saddle
+  const saddle=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.06,0.16),fMat());
+  saddle.position.set(-0.15,1.1,0); bikeGroup.add(saddle);
+  // Handlebar stem
+  bikeGroup.add(tube(V(1.45,-0.25,0),V(1.5,0.6,0),0.03,silvMat.clone()));
+  // Handlebar drops
+  bikeGroup.add(tube(V(1.3,0.6,-0.35),V(1.3,0.6,0.35),0.025,silvMat.clone()));
+
+  // Crank
+  const crank=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.22,16),cMat());
+  crank.rotation.x=Math.PI/2; crank.position.set(0,-1,0); bikeGroup.add(crank);
+  bikeGroup.add(tube(V(0,-1,0.11),V(0.4,-0.65,0.11),0.025,fMat()));
+
+  bikeGroup.position.set(-0.1,0.2,0);
+}
+
+function updateBikeColor(hex){
+  if(!bikeGroup) return;
+  buildBike(hex);
+}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded',()=>{
+  initBikeViewer();
+  // Build color swatches preview bar
+  const colors=[
+    {hex:'#1a1a22',name:'Stealth Black'},{hex:'#c8ff00',name:'Volt'},
+    {hex:'#f5f5f7',name:'White'},{hex:'#cc2200',name:'Red'},
+    {hex:'#0044aa',name:'Blue'},{hex:'#8a8a9a',name:'Titanium'}
+  ];
+  const swWrap=document.getElementById('color-swatches');
+  const threeHexes=[0x111118,0x8aad00,0xd0d0d8,0xcc2200,0x0044aa,0x8a8a9a];
+  colors.forEach((c,i)=>{
+    const sw=document.createElement('div');
+    sw.className='csw'+(i===0?' active':'');
+    sw.style.background=c.hex;
+    if(c.hex==='#1a1a22') sw.style.border='2px solid #333';
+    sw.onclick=()=>{
+      document.querySelectorAll('.csw').forEach(s=>s.classList.remove('active'));
+      sw.classList.add('active');
+      updateBikeColor(threeHexes[i]);
+      state.color=c.name; state.colorHex=threeHexes[i];
+      document.getElementById('cb-color').textContent=c.name;
+      // Sync UI
+      document.querySelectorAll('.color-opt').forEach((opt,j)=>{
+        opt.classList.toggle('selected',j===i);
+      });
+    };
+    swWrap.appendChild(sw);
+  });
+});
+</script>
+</body>
+</html>
